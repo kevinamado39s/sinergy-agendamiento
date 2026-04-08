@@ -1,0 +1,1725 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Agendamiento de Cuadrillas – Sinergy</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<style>
+  :root {
+    --azul: #1F4E78; --azul-medio: #2E75B6; --azul-claro: #D9EAF7;
+    --verde-claro: #E2F0D9; --naranja-claro: #FCE4D6; --borde: #CCCCCC; --texto: #1a1a1a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+  body { background: #ECECEC; color: var(--texto); }
+  header { background: var(--azul); color: white; padding: 16px 24px; }
+  header h1 { font-size: 1.2rem; }
+  header span { font-size: .85rem; opacity: .8; }
+  .tabs { display: flex; background: var(--azul-medio); flex-wrap: wrap; }
+  .tab { padding: 10px 22px; color: rgba(255,255,255,.75); cursor: pointer; font-size: .9rem; border-bottom: 3px solid transparent; transition: .2s; }
+  .tab.active, .tab:hover { color: white; border-bottom-color: white; }
+  .page { display: none; padding: 20px; max-width: 1300px; margin: auto; }
+  .page.active { display: block; }
+  .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  .card h2 { font-size: 1rem; color: var(--azul); margin-bottom: 14px; border-bottom: 2px solid var(--azul-claro); padding-bottom: 8px; }
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+  label { font-size: .8rem; font-weight: 600; color: #444; display: block; margin-bottom: 4px; }
+  input, select, textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--borde); border-radius: 5px; font-size: .88rem; color: var(--texto); background: white; }
+  input:focus, select:focus { outline: none; border-color: var(--azul-medio); box-shadow: 0 0 0 2px rgba(46,117,182,.15); }
+  .form-full { grid-column: 1 / -1; }
+  .hidden { display: none !important; }
+  .btn { padding: 9px 18px; border: none; border-radius: 5px; cursor: pointer; font-size: .88rem; font-weight: 600; transition: .2s; }
+  .btn-primary { background: var(--azul); color: white; }
+  .btn-primary:hover { background: #163759; }
+  .btn-secondary { background: #666; color: white; }
+  .btn-secondary:hover { background: #444; }
+  .btn-danger { background: #C00000; color: white; }
+  .btn-danger:hover { background: #900000; }
+  .btn-export { background: #375623; color: white; }
+  .btn-export:hover { background: #243B17; }
+  .btn-print { background: #7030A0; color: white; }
+  .btn-print:hover { background: #50207A; }
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; align-items: center; }
+  table { width: 100%; border-collapse: collapse; font-size: .83rem; }
+  th { background: var(--azul); color: white; padding: 9px 10px; text-align: left; white-space: nowrap; }
+  td { padding: 8px 10px; border-bottom: 1px solid #EFEFEF; vertical-align: middle; }
+  tr:hover td { background: #F0F8FF; }
+  .badge { padding: 3px 8px; border-radius: 12px; font-size: .75rem; font-weight: 600; white-space: nowrap; display: inline-block; }
+  .badge-tp { background: var(--verde-claro); color: #375623; }
+  .badge-tr { background: var(--azul-claro); color: var(--azul); }
+  .badge-tg { background: var(--naranja-claro); color: #7F3B0E; }
+  .badge-nodo { background: #E8D5F5; color: #5B0FA0; }
+  .badge-tramo { background: #D5EAF5; color: #0F4A7A; }
+  .st-pendiente { background: #FFF2CC; color: #7F6000; }
+  .st-curso { background: #D9EAF7; color: #1F4E78; }
+  .st-ejecutado { background: #E2F0D9; color: #375623; }
+  .st-cancelado { background: #F4CCCC; color: #990000; }
+  .filter-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 14px; }
+  .filter-row .f { display: flex; flex-direction: column; min-width: 150px; }
+  .empty { color: #999; text-align: center; padding: 30px; font-size: .9rem; }
+  .duracion { font-weight: 600; color: var(--azul); }
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .stat { background: white; border-radius: 8px; padding: 14px; box-shadow: 0 1px 4px rgba(0,0,0,.08); text-align: center; }
+  .stat .num { font-size: 1.6rem; font-weight: 700; color: var(--azul); }
+  .stat .lbl { font-size: .78rem; color: #666; margin-top: 4px; }
+  .week-block { margin-bottom: 18px; border: 1px solid #e9e9e9; border-radius: 8px; overflow: hidden; }
+  .week-title { background: #f8fbfe; padding: 12px 14px; border-bottom: 1px solid #e9eef4; font-weight: 700; color: var(--azul); }
+  .inline-select { min-width: 120px; padding: 5px 7px; font-size: .8rem; border: 1px solid var(--borde); border-radius: 4px; }
+  .small-btn { padding: 5px 8px; font-size: .75rem; }
+  .hint { font-size: .75rem; color: #888; margin-top: 3px; font-style: italic; }
+  /* === PENDIENTES POR AGENDAR === */
+  .pend-badge { background: #C00000; color: white; border-radius: 10px; padding: 1px 7px; font-size: .72rem; margin-left: 5px; vertical-align: middle; font-weight: 700; }
+  .prioridad-alta  { background: #FDDEDE; color: #C00000; }
+  .prioridad-media { background: #FEF3CD; color: #856404; }
+  .prioridad-baja  { background: #D4EDDA; color: #155724; }
+  .st-abierto   { background: #FDDEDE; color: #C00000; }
+  .st-agendado  { background: #D9EAF7; color: #1F4E78; }
+  .st-resuelto  { background: #E2F0D9; color: #375623; }
+  .pend-resuelta td { opacity: .4; text-decoration: line-through; }
+  .pend-resuelta td:first-child,
+  .pend-resuelta td:last-child { text-decoration: none; opacity: 1; }
+  .alerta-box { background: #FFF3CD; border: 1px solid #FFEAA7; border-radius: 6px; padding: 10px 16px; margin-bottom: 16px; font-size: .85rem; color: #856404; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: .2s; }
+  .alerta-box:hover { background: #FFE69C; }
+  .alerta-box strong { color: #6b4f00; }
+  .pend-card-mini { background: #fffdf0; border: 1px solid #FFE69C; border-radius: 6px; padding: 12px 14px; margin-bottom: 10px; display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+  .pend-card-mini .pend-info { flex: 1; min-width: 200px; }
+  .pend-card-mini .pend-desc { font-weight: 600; font-size: .88rem; margin-bottom: 4px; }
+  .pend-card-mini .pend-meta { font-size: .78rem; color: #666; }
+
+  /* === GESTIONES DEL ÁREA === */
+  .gest-badge { background: #7030A0; color: white; border-radius: 10px; padding: 1px 7px; font-size: .72rem; margin-left: 5px; vertical-align: middle; font-weight: 700; }
+  .cat-correo       { background: #D9EAF7; color: #1F4E78; }
+  .cat-viaticos     { background: #FFF2CC; color: #7F6000; }
+  .cat-uniformes    { background: #E2F0D9; color: #375623; }
+  .cat-radicado     { background: #E8D5F5; color: #5B0FA0; }
+  .cat-permiso      { background: #FCE4D6; color: #7F3B0E; }
+  .cat-tramite      { background: #D5EAF5; color: #0F4A7A; }
+  .cat-otro         { background: #F0F0F0; color: #444; }
+  .gst-pendiente    { background: #FFF2CC; color: #7F6000; }
+  .gst-proceso      { background: #D9EAF7; color: #1F4E78; }
+  .gst-completado   { background: #E2F0D9; color: #375623; }
+  .gst-cancelado    { background: #F4CCCC; color: #990000; }
+  .gest-completada td { opacity: .45; text-decoration: line-through; }
+  .gest-completada td:first-child, .gest-completada td:last-child { text-decoration: none; opacity: 1; }
+  .alerta-gest { background: #EDE0F5; border: 1px solid #C599E8; border-radius: 6px; padding: 10px 16px; margin-bottom: 16px; font-size: .85rem; color: #5B0FA0; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: .2s; }
+  .alerta-gest:hover { background: #DCC5F0; }
+  .alerta-gest strong { color: #430A7A; }
+
+  @media print {
+    header, .tabs, .btn-row, .filter-row, .no-print { display: none !important; }
+    .page { display: block !important; padding: 0; }
+    .card { box-shadow: none; border: 1px solid #ddd; }
+    body { background: white; }
+  }
+</style>
+</head>
+<body>
+
+<header style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+  <div>
+    <h1>📡 Agendamiento de Cuadrillas</h1>
+    <span>Sinergy Soluciones Integrales S.A.S. — Dirección de Infraestructura</span>
+  </div>
+  <div id="sync-status" style="font-size:.8rem;opacity:.9;min-width:140px;text-align:right;"></div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="showPage('agenda',this)">📋 Nuevo Registro</div>
+  <div class="tab" onclick="showPage('listado',this)">📅 Listado / Filtros</div>
+  <div class="tab" onclick="showPage('exportar',this)">📤 Exportar</div>
+  <div class="tab" onclick="showPage('resumen',this)">📊 Resumen</div>
+  <div class="tab" onclick="showPage('pendientes',this)">🔔 Pendientes <span id="badge-pend" class="pend-badge hidden">0</span></div>
+  <div class="tab" onclick="showPage('gestiones',this)">📝 Gestiones <span id="badge-gest" class="gest-badge hidden">0</span></div>
+</div>
+
+<!-- ==================== NUEVO REGISTRO ==================== -->
+<div id="page-agenda" class="page active">
+
+  <!-- Alerta pendientes abiertos -->
+  <div id="alerta-pendientes" class="alerta-box hidden" onclick="irAPendientes()">
+    ⚠️ <span id="txt-alerta-pend"></span> &nbsp;→ <strong>Ver pendientes</strong>
+  </div>
+
+  <div class="card">
+    <h2 id="form-title">Registrar actividad</h2>
+    <input type="hidden" id="f-id">
+    <input type="hidden" id="f-estado-hidden">
+    <input type="hidden" id="f-manual-hidden" value="false">
+
+    <div class="form-grid">
+      <div>
+        <label>Cuadrilla *</label>
+        <input id="f-cuadrilla" list="dl-cuadrillas" placeholder="Escribe o selecciona"
+               oninput="onCuadrillaChange()" onchange="onCuadrillaChange()">
+        <datalist id="dl-cuadrillas"></datalist>
+      </div>
+      <div>
+        <label>Fecha *</label>
+        <input type="date" id="f-fecha" onchange="calcularSemana()">
+        <div class="hint" id="hint-fecha"></div>
+      </div>
+      <div>
+        <label>Semana</label>
+        <input type="text" id="f-semana" readonly style="background:#f0f0f0;cursor:not-allowed;">
+      </div>
+      <div>
+        <label>Actividad *</label>
+        <input id="f-actividad" list="dl-actividades" placeholder="Escribe o selecciona"
+               oninput="toggleUbicacion()" onchange="toggleUbicacion()">
+        <datalist id="dl-actividades"></datalist>
+      </div>
+      <div id="box-tipo" class="hidden">
+        <label>Tipo *</label>
+        <select id="f-tipo" onchange="toggleTipo()">
+          <option value="">-- seleccionar --</option>
+          <option>Nodo</option>
+          <option>Tramo</option>
+        </select>
+      </div>
+      <div id="box-municipio" class="hidden">
+        <label id="lbl-municipio1">Municipio *</label>
+        <input id="f-municipio" list="dl-municipios" placeholder="Escribe o selecciona">
+      </div>
+      <div id="box-municipio2" class="hidden">
+        <label>Municipio 2 *</label>
+        <input id="f-municipio2" list="dl-municipios" placeholder="Escribe o selecciona">
+      </div>
+      <div id="box-origen" class="hidden">
+        <label>Origen *</label>
+        <input id="f-origen" list="dl-municipios" placeholder="Escribe o selecciona">
+      </div>
+      <div id="box-destino" class="hidden">
+        <label>Destino *</label>
+        <input id="f-destino" list="dl-municipios" placeholder="Escribe o selecciona">
+      </div>
+      <div>
+        <label>Hora inicio</label>
+        <select id="f-hinicio"></select>
+      </div>
+      <div>
+        <label>Hora fin</label>
+        <select id="f-hfin"></select>
+      </div>
+      <div>
+        <label>Responsable</label>
+        <input id="f-responsable" list="dl-responsables" placeholder="Escribe o selecciona">
+        <datalist id="dl-responsables"></datalist>
+      </div>
+      <div>
+        <label>Vehículo</label>
+        <input id="f-vehiculo" list="dl-vehiculos" placeholder="Escribe o selecciona">
+        <datalist id="dl-vehiculos"></datalist>
+      </div>
+      <div>
+        <label>Financiación</label>
+        <select id="f-financiacion">
+          <option>No aplica</option>
+          <option>Viáticos</option>
+          <option>Rubro de emergencia</option>
+        </select>
+      </div>
+      <div class="form-full">
+        <label>Observaciones</label>
+        <input type="text" id="f-obs" placeholder="Opcional">
+      </div>
+    </div>
+
+    <datalist id="dl-municipios"></datalist>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="btn-save" onclick="guardar()">💾 Guardar actividad</button>
+      <button class="btn btn-secondary hidden" id="btn-cancel-edit" onclick="cancelarEdicion()">↩ Cancelar edición</button>
+      <span id="msg-ok" style="color:green;font-size:.85rem;display:none">✔ Guardado correctamente</span>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== LISTADO ==================== -->
+<div id="page-listado" class="page">
+  <div class="card">
+    <h2>Filtrar actividades</h2>
+    <div class="filter-row">
+      <div class="f"><label>Semana</label>
+        <select id="fil-semana" onchange="renderTabla()">
+          <option value="">Todas</option>
+        </select>
+      </div>
+      <div class="f"><label>Cuadrilla</label>
+        <input id="fil-cuadrilla" list="dl-cuadrillas" placeholder="Todas" oninput="renderTabla()">
+      </div>
+      <div class="f"><label>Estado</label>
+        <select id="fil-estado" onchange="renderTabla()">
+          <option value="">Todos</option>
+          <option>Pendiente</option><option>En curso</option>
+          <option>Ejecutado</option><option>Cancelado</option>
+        </select>
+      </div>
+      <div class="f"><label>Fecha desde</label>
+        <input type="date" id="fil-desde" onchange="renderTabla()">
+      </div>
+      <div class="f"><label>Fecha hasta</label>
+        <input type="date" id="fil-hasta" onchange="renderTabla()">
+      </div>
+      <button class="btn btn-primary" onclick="limpiarFiltros()">🔄 Limpiar</button>
+    </div>
+    <div id="tabla-container"></div>
+  </div>
+</div>
+
+<!-- ==================== EXPORTAR ==================== -->
+<div id="page-exportar" class="page">
+  <div class="card">
+    <h2>Exportar agenda</h2>
+    <div class="filter-row">
+      <div class="f"><label>Cuadrilla</label>
+        <input id="exp-cuadrilla" list="dl-cuadrillas" placeholder="Todas" oninput="renderPreview()">
+      </div>
+      <div class="f"><label>Semana</label>
+        <select id="exp-semana" onchange="renderPreview()">
+          <option value="">Todas</option>
+        </select>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-export" onclick="exportarCSV()">📥 Descargar CSV</button>
+      <button class="btn btn-print" onclick="exportarPDF()">📄 Descargar PDF</button>
+    </div>
+  </div>
+  <div class="card"><h2>Vista previa</h2><div id="preview-tabla"></div></div>
+</div>
+
+<!-- ==================== RESUMEN ==================== -->
+<div id="page-resumen" class="page">
+  <div id="resumen-content"></div>
+</div>
+
+<!-- ==================== PENDIENTES POR AGENDAR ==================== -->
+<div id="page-pendientes" class="page">
+
+  <!-- Formulario -->
+  <div class="card">
+    <h2 id="form-pend-title">🔔 Registrar pendiente</h2>
+    <input type="hidden" id="fp-id">
+
+    <div class="form-grid">
+      <div>
+        <label>Tipo *</label>
+        <select id="fp-tipo" onchange="toggleTipoPend()">
+          <option value="">-- seleccionar --</option>
+          <option>Nodo</option>
+          <option>Tramo</option>
+          <option>General</option>
+        </select>
+      </div>
+      <div id="fp-box-mun1" class="hidden">
+        <label id="fp-lbl-mun1">Municipio *</label>
+        <input id="fp-municipio" list="dl-municipios" placeholder="Escribe o selecciona">
+      </div>
+      <div id="fp-box-mun2" class="hidden">
+        <label>Municipio 2 *</label>
+        <input id="fp-municipio2" list="dl-municipios" placeholder="Escribe o selecciona">
+      </div>
+      <div>
+        <label>Cuadrilla sugerida</label>
+        <select id="fp-cuadrilla">
+          <option value="">Sin asignar</option>
+          <option>Tendido Pitalito</option>
+          <option>Troncal</option>
+          <option>Tendido Garzón</option>
+        </select>
+      </div>
+      <div>
+        <label>Prioridad</label>
+        <select id="fp-prioridad">
+          <option>Alta</option>
+          <option>Media</option>
+          <option>Baja</option>
+        </select>
+      </div>
+      <div>
+        <label>Fecha reporte</label>
+        <input type="date" id="fp-fecha">
+      </div>
+      <div class="form-full">
+        <label>Descripción *</label>
+        <input type="text" id="fp-desc" placeholder="Ej: Caja NAP afectada, sector La Laguna – cliente sin servicio">
+      </div>
+      <div class="form-full">
+        <label>Observaciones</label>
+        <input type="text" id="fp-obs" placeholder="Información adicional (opcional)">
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="guardarPendiente()">💾 Guardar pendiente</button>
+      <button class="btn btn-secondary hidden" id="btn-cancel-pend" onclick="cancelarEdicionPend()">↩ Cancelar</button>
+      <span id="msg-ok-pend" style="color:green;font-size:.85rem;display:none">✔ Guardado</span>
+    </div>
+  </div>
+
+  <!-- Lista -->
+  <div class="card">
+    <h2>Lista de pendientes</h2>
+    <div class="filter-row" style="flex-wrap:wrap;row-gap:10px;">
+      <div class="f">
+        <label>Estado</label>
+        <select id="fp-fil-estado" onchange="renderPendientes()">
+          <option value="">Todos</option>
+          <option>Abierto</option>
+          <option>Agendado</option>
+          <option>Resuelto</option>
+        </select>
+      </div>
+      <div class="f">
+        <label>Cuadrilla</label>
+        <select id="fp-fil-cuadrilla" onchange="renderPendientes()">
+          <option value="">Todas</option>
+          <option>Tendido Pitalito</option>
+          <option>Troncal</option>
+          <option>Tendido Garzón</option>
+        </select>
+      </div>
+      <div class="f">
+        <label>Prioridad</label>
+        <select id="fp-fil-prioridad" onchange="renderPendientes()">
+          <option value="">Todas</option>
+          <option>Alta</option>
+          <option>Media</option>
+          <option>Baja</option>
+        </select>
+      </div>
+      <div class="f">
+        <label>Tipo</label>
+        <select id="fp-fil-tipo" onchange="renderPendientes()">
+          <option value="">Todos</option>
+          <option>Nodo</option>
+          <option>Tramo</option>
+          <option>General</option>
+        </select>
+      </div>
+      <div class="f" style="min-width:180px">
+        <label>Municipio / Ubicación</label>
+        <input type="text" id="fp-fil-ubicacion" placeholder="Buscar municipio..." oninput="renderPendientes()">
+      </div>
+      <div class="f" style="min-width:200px">
+        <label>Descripción</label>
+        <input type="text" id="fp-fil-desc" placeholder="Buscar en descripción..." oninput="renderPendientes()">
+      </div>
+      <div class="f">
+        <label>Fecha desde</label>
+        <input type="date" id="fp-fil-desde" onchange="renderPendientes()">
+      </div>
+      <div class="f">
+        <label>Fecha hasta</label>
+        <input type="date" id="fp-fil-hasta" onchange="renderPendientes()">
+      </div>
+      <button class="btn btn-secondary" onclick="limpiarFiltrosPend()">🔄 Limpiar</button>
+    </div>
+    <div id="pend-tabla-container"></div>
+  </div>
+</div>
+
+<!-- ==================== GESTIONES DEL ÁREA ==================== -->
+<div id="page-gestiones" class="page">
+
+  <div class="card">
+    <h2 id="form-gest-title">📝 Registrar gestión</h2>
+    <input type="hidden" id="fg-id">
+
+    <div class="form-grid">
+      <div>
+        <label>Categoría *</label>
+        <input id="fg-categoria" list="dl-categorias-gest" placeholder="Selecciona o escribe una categoría">
+        <datalist id="dl-categorias-gest">
+          <option value="Enviar correo">
+          <option value="Solicitar viáticos">
+          <option value="Gestión de uniformes">
+          <option value="Responder radicado">
+          <option value="Solicitud de permiso">
+          <option value="Trámite administrativo">
+          <option value="Solicitud de dotación">
+          <option value="Gestión de contrato">
+          <option value="Reporte interno">
+          <option value="Coordinación con funcionario">
+        </datalist>
+      </div>
+      <div>
+        <label>Prioridad</label>
+        <select id="fg-prioridad">
+          <option>Alta</option>
+          <option selected>Media</option>
+          <option>Baja</option>
+        </select>
+      </div>
+      <div>
+        <label>Estado</label>
+        <select id="fg-estado">
+          <option>Pendiente</option>
+          <option>En proceso</option>
+          <option>Completado</option>
+          <option>Cancelado</option>
+        </select>
+      </div>
+      <div>
+        <label>Fecha</label>
+        <input type="date" id="fg-fecha">
+      </div>
+      <div>
+        <label>Fecha límite</label>
+        <input type="date" id="fg-fecha-limite">
+      </div>
+      <div>
+        <label>Dirigido a / Funcionario</label>
+        <input type="text" id="fg-dirigido" placeholder="Ej: Coordinador, MINTIC, RR.HH.">
+      </div>
+      <div class="form-full">
+        <label>Asunto / Descripción *</label>
+        <input type="text" id="fg-asunto" placeholder="Ej: Solicitar viáticos para troncal semana B, responder radicado No. 2025-0312...">
+      </div>
+      <div class="form-full">
+        <label>Observaciones / Seguimiento</label>
+        <textarea id="fg-obs" rows="3" placeholder="Estado de avance, respuestas recibidas, próximos pasos..."></textarea>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="guardarGestion()">💾 Guardar gestión</button>
+      <button class="btn btn-secondary hidden" id="btn-cancel-gest" onclick="cancelarEdicionGest()">↩ Cancelar</button>
+      <span id="msg-ok-gest" style="color:green;font-size:.85rem;display:none">✔ Guardado</span>
+    </div>
+  </div>
+
+  <!-- Lista -->
+  <div class="card">
+    <h2>Lista de gestiones</h2>
+    <div class="filter-row" style="flex-wrap:wrap;row-gap:10px;">
+      <div class="f">
+        <label>Categoría</label>
+        <input id="fg-fil-cat" list="dl-fil-cat-gest" placeholder="Todas" oninput="renderGestiones()">
+        <datalist id="dl-fil-cat-gest"></datalist>
+      </div>
+      <div class="f">
+        <label>Estado</label>
+        <select id="fg-fil-estado" onchange="renderGestiones()">
+          <option value="">Todos</option>
+          <option>Pendiente</option>
+          <option>En proceso</option>
+          <option>Completado</option>
+          <option>Cancelado</option>
+        </select>
+      </div>
+      <div class="f">
+        <label>Prioridad</label>
+        <select id="fg-fil-prio" onchange="renderGestiones()">
+          <option value="">Todas</option>
+          <option>Alta</option>
+          <option>Media</option>
+          <option>Baja</option>
+        </select>
+      </div>
+      <div class="f" style="min-width:200px">
+        <label>Asunto / Descripción</label>
+        <input type="text" id="fg-fil-asunto" placeholder="Buscar en asunto..." oninput="renderGestiones()">
+      </div>
+      <div class="f" style="min-width:180px">
+        <label>Dirigido a / Funcionario</label>
+        <input type="text" id="fg-fil-dirigido" placeholder="Buscar funcionario..." oninput="renderGestiones()">
+      </div>
+      <div class="f">
+        <label>Fecha desde</label>
+        <input type="date" id="fg-fil-desde" onchange="renderGestiones()">
+      </div>
+      <div class="f">
+        <label>Fecha hasta</label>
+        <input type="date" id="fg-fil-hasta" onchange="renderGestiones()">
+      </div>
+      <button class="btn btn-secondary" onclick="limpiarFiltrosGest()">🔄 Limpiar</button>
+      <button class="btn btn-export" onclick="exportarGestionesCSV()">📥 CSV</button>
+    </div>
+    <div id="gest-tabla-container"></div>
+  </div>
+</div>
+
+<script>
+/* ========================================================
+   GOOGLE SHEETS SYNC
+   ======================================================== */
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwCEHeVFiebmHUrZMx115fVaBiKDC3MhJ3nRjOXyF_Jo3wrtvT1BF8-Kx0hGsj0oWM4/exec'; // 👈 Pega aquí la URL de tu Apps Script
+
+function setSyncStatus(s) {
+  const el = document.getElementById('sync-status');
+  if (!el) return;
+  if (s === 'syncing') { el.textContent = '🔄 Sincronizando...'; el.style.color='#aed6f1'; }
+  else if (s === 'ok') { el.textContent = '✅ Sincronizado'; el.style.color='#a9dfbf';
+    setTimeout(() => { el.textContent = ''; }, 3000); }
+  else { el.textContent = '⚠️ Sin conexión (datos locales)'; el.style.color='#f9e79f'; }
+}
+
+async function syncSheet(key, records) {
+  if (!GAS_URL || GAS_URL === 'REEMPLAZAR_CON_TU_URL') return;
+  setSyncStatus('syncing');
+  try {
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      body: JSON.stringify({ sheet: key, action: 'sync', records }),
+      headers: { 'Content-Type': 'text/plain' }
+    });
+    const json = await res.json();
+    setSyncStatus(json.ok ? 'ok' : 'error');
+  } catch(e) { setSyncStatus('error'); }
+}
+
+async function cargarDesdeSheets() {
+  if (!GAS_URL || GAS_URL === 'REEMPLAZAR_CON_TU_URL') return;
+  setSyncStatus('syncing');
+  try {
+    const res  = await fetch(GAS_URL + '?v=' + Date.now());
+    const json = await res.json();
+    if (json.ok && json.data) {
+      if (json.data.agenda     && json.data.agenda.length)     localStorage.setItem(KEY,   JSON.stringify(json.data.agenda));
+      if (json.data.pendientes && json.data.pendientes.length) localStorage.setItem(KEY_P, JSON.stringify(json.data.pendientes));
+      if (json.data.gestiones  && json.data.gestiones.length)  localStorage.setItem(KEY_G, JSON.stringify(json.data.gestiones));
+      migrarSemanas();
+      initLists(); resetForm(); resetFormPend(); resetFormGest();
+      renderTabla(); renderResumen(); renderPendientes();
+      actualizarContadorPendientes(); renderGestiones(); actualizarContadorGestiones();
+    }
+    setSyncStatus('ok');
+  } catch(e) { setSyncStatus('error'); }
+}
+
+/* ========================================================
+   DATOS AGENDA
+   ======================================================== */
+const KEY   = 'sinergy_agenda_v3';
+const KEY_P = 'sinergy_pendientes_v1';
+
+const ACTIVIDADES_BASE = [
+  'Desplazamiento','Tendido','Entrega servicio','Incidencia Masiva',
+  'Mantenimiento Programado','Revisión/Inspección','Apoyo Operaciones',
+  'Almuerzo','Viabilidad','Entrega Postventa','Ticket Corporativo',
+  'Levantamiento de Carteras','Podas','Ampliación de Red'
+];
+
+const CFG = {
+  cuadrillas: ['Tendido Pitalito','Troncal','Tendido Garzón'],
+  actividades: {
+    'Tendido Pitalito': [...ACTIVIDADES_BASE],
+    'Troncal':          [...ACTIVIDADES_BASE],
+    'Tendido Garzón':   [...ACTIVIDADES_BASE]
+  },
+  municipios: [
+    'Isnos','San Agustin','Bruselas','Pitalito','Acevedo','Suaza','Guadalupe',
+    'Altamira','Garzon','Gigante','Hobo','Campoalegre','Neiva','Palermo',
+    'Teruel','Iquira','Tesalia','Paicol','La Plata','Pital','Timaná','Tarqui','Elias'
+  ],
+  responsables: [
+    'Wilson Gonzalez','Jeysson Muñoz','Yoelver Laguna','Rovin Chica',
+    'Diego Arcos','Nelson Trujillo','Donaldo Cuadro','Heiner Avila'
+  ],
+  vehiculos: ['MQO 633','CGO 113','NQV 614','NQW 070','DEY 888','RDU 154','Servicio público','No aplica'],
+  estados: ['Pendiente','En curso','Ejecutado','Cancelado']
+};
+
+function getData()    { try { return JSON.parse(localStorage.getItem(KEY))   || []; } catch(e) { return []; } }
+function setData(d)   { localStorage.setItem(KEY,   JSON.stringify(d)); syncSheet('agenda',     d); }
+function getPendientes() { try { return JSON.parse(localStorage.getItem(KEY_P)) || []; } catch(e) { return []; } }
+function setPendientes(d){ localStorage.setItem(KEY_P, JSON.stringify(d)); syncSheet('pendientes', d); }
+
+/* ---- Helpers ---- */
+function generarOpcionesHora(idSelect, valorSeleccionado = '') {
+  const el = document.getElementById(idSelect);
+  if (!el) return;
+  let html = '<option value="">-- hora --</option>';
+  for (let h = 0; h < 24; h++) {
+    for (let m = 0; m < 60; m += 10) {
+      const v = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+      html += `<option value="${v}"${v === valorSeleccionado ? ' selected' : ''}>${v}</option>`;
+    }
+  }
+  el.innerHTML = html;
+}
+
+const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+function calcularSemana() {
+  const fecha = val('f-fecha');
+  if (!fecha) return;
+  const d = new Date(fecha + 'T12:00:00');
+  const dow = d.getDay();
+  const offsetLunes = dow === 0 ? -6 : 1 - dow;
+  const lunesSemana = new Date(d);
+  lunesSemana.setDate(d.getDate() + offsetLunes);
+  const primerDia = new Date(d.getFullYear(), d.getMonth(), 1);
+  const dowPrimer = primerDia.getDay();
+  const offsetPrimerLunes = dowPrimer === 0 ? 1 : dowPrimer === 1 ? 0 : 8 - dowPrimer;
+  const primerLunes = new Date(d.getFullYear(), d.getMonth(), 1 + offsetPrimerLunes);
+  let diffSemanas = Math.round((lunesSemana - primerLunes) / (7 * 24 * 60 * 60 * 1000));
+  if (diffSemanas < 0) diffSemanas = 0;
+  const letra   = ['A','B','C','D','E'][Math.min(diffSemanas, 4)];
+  const semana  = MESES[d.getMonth()] + ' · ' + letra;
+  setVal('f-semana', semana);
+  sugerirHoraInicio();
+  actualizarHintFecha(val('f-fecha'), val('f-cuadrilla'));
+}
+
+function sugerirFecha(cuadrilla = '') {
+  const data = getData();
+  const filtrados = cuadrilla
+    ? data.filter(r => r.cuadrilla === cuadrilla && r.fecha)
+    : data.filter(r => r.fecha);
+  if (!filtrados.length) return new Date().toISOString().split('T')[0];
+  const sorted = [...filtrados].sort((a,b) =>
+    (b.fecha + (b.hfin||'')).localeCompare(a.fecha + (a.hfin||''))
+  );
+  return sorted[0].fecha;
+}
+
+function actualizarHintFecha(fecha, cuadrilla) {
+  const hint = document.getElementById('hint-fecha');
+  if (!hint) return;
+  if (!fecha || !cuadrilla) { hint.textContent = ''; return; }
+  const rows = getData()
+    .filter(r => r.fecha === fecha && r.cuadrilla === cuadrilla && r.hfin)
+    .sort((a,b) => a.hfin.localeCompare(b.hfin));
+  hint.textContent = rows.length
+    ? `↑ Último registro: ${rows[rows.length-1].hfin}`
+    : 'Sin actividades en esta fecha para la cuadrilla';
+}
+
+function autoEstado(row) {
+  const now   = new Date();
+  const today = now.toISOString().split('T')[0];
+  const hhmm  = now.toTimeString().slice(0, 5);
+  if (!row.fecha)                         return 'Pendiente';
+  if (row.fecha > today)                  return 'Pendiente';
+  if (row.fecha < today)                  return 'Ejecutado';
+  if (row.hfin    && hhmm >= row.hfin)    return 'Ejecutado';
+  if (row.hinicio && hhmm >= row.hinicio) return 'En curso';
+  return 'Pendiente';
+}
+
+function estadoEfectivo(row) {
+  if (row.estado === 'Cancelado') return 'Cancelado';
+  if (row.manualEstado)           return row.estado;
+  return autoEstado(row);
+}
+
+function badgeClass(c) {
+  if (c === 'Tendido Pitalito') return 'badge-tp';
+  if (c === 'Troncal')         return 'badge-tr';
+  return 'badge-tg';
+}
+function estadoClass(e) {
+  if (e === 'Pendiente') return 'st-pendiente';
+  if (e === 'En curso')  return 'st-curso';
+  if (e === 'Ejecutado') return 'st-ejecutado';
+  return 'st-cancelado';
+}
+function esc(s = '') {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function getDia(f) {
+  if (!f) return '';
+  return ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][new Date(f + 'T12:00:00').getDay()];
+}
+function calcDur(hi, hf) {
+  if (!hi || !hf) return '';
+  const a = toMin(hi), b = toMin(hf);
+  if (b <= a) return '';
+  const mins = b - a, h = Math.floor(mins/60), m = mins % 60;
+  return h > 0 ? (m > 0 ? `${h}h ${m}min` : `${h}h`) : `${m}min`;
+}
+function toMin(hhmm) { const [h,m] = hhmm.split(':').map(Number); return h*60+m; }
+function val(id)          { return document.getElementById(id).value.trim(); }
+function setVal(id, v='') { document.getElementById(id).value = v ?? ''; }
+
+function fillDL(id, items) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.innerHTML = [...new Set(items.filter(Boolean))]
+    .sort((a,b) => a.localeCompare(b,'es'))
+    .map(v => `<option value="${esc(v)}"></option>`).join('');
+}
+
+
+/* ========================================================
+   MIGRACIÓN: semana letra → Mes · Letra
+   ======================================================== */
+function migrarSemanas() {
+  const LETRA_SOLA = /^[A-E]$/;
+  const data = getData();
+  let cambios = false;
+  data.forEach(r => {
+    if (r.semana && LETRA_SOLA.test(r.semana.trim()) && r.fecha) {
+      const d = new Date(r.fecha + 'T12:00:00');
+      if (!isNaN(d)) {
+        const dow = d.getDay();
+        const offsetLunes = dow === 0 ? -6 : 1 - dow;
+        const lunesSemana = new Date(d);
+        lunesSemana.setDate(d.getDate() + offsetLunes);
+        const primerDia = new Date(d.getFullYear(), d.getMonth(), 1);
+        const dowPrimer = primerDia.getDay();
+        const offsetPrimerLunes = dowPrimer === 0 ? 1 : dowPrimer === 1 ? 0 : 8 - dowPrimer;
+        const primerLunes = new Date(d.getFullYear(), d.getMonth(), 1 + offsetPrimerLunes);
+        let diffSemanas = Math.round((lunesSemana - primerLunes) / (7 * 24 * 60 * 60 * 1000));
+        if (diffSemanas < 0) diffSemanas = 0;
+        const letra  = ['A','B','C','D','E'][Math.min(diffSemanas, 4)];
+        r.semana = MESES[d.getMonth()] + ' · ' + letra;
+        cambios  = true;
+      }
+    }
+  });
+  if (cambios) setData(data);
+}
+
+function fillSemanaSelects() {
+  const semanas = [...new Set(getData().map(r => r.semana).filter(Boolean))]
+    .sort((a, b) => {
+      // Ordenar por mes (posición en MESES) y luego por letra
+      const [ma, la] = a.split(' · ');
+      const [mb, lb] = b.split(' · ');
+      const mi = MESES.indexOf(ma), mj = MESES.indexOf(mb);
+      if (mi !== mj) return mi - mj;
+      return (la||'').localeCompare(lb||'');
+    });
+  ['fil-semana','exp-semana'].forEach(id => {
+    const el  = document.getElementById(id);
+    if (!el) return;
+    const cur = el.value;
+    el.innerHTML = '<option value="">Todas</option>' +
+      semanas.map(s => `<option value="${esc(s)}"${s===cur?' selected':''}>${s}</option>`).join('');
+  });
+}
+
+function initLists() {
+  migrarSemanas();
+  fillDL('dl-cuadrillas', CFG.cuadrillas);
+  const data = getData();
+  fillDL('dl-municipios', [
+    ...CFG.municipios,
+    ...data.flatMap(r => [r.municipio, r.municipio2, r.origen, r.destino]).filter(Boolean)
+  ]);
+  fillDL('dl-responsables', [...CFG.responsables, ...data.map(r=>r.responsable).filter(Boolean)]);
+  fillDL('dl-vehiculos',    [...CFG.vehiculos,    ...data.map(r=>r.vehiculo).filter(Boolean)]);
+  generarOpcionesHora('f-hinicio');
+  generarOpcionesHora('f-hfin');
+  fillSemanaSelects();
+  onCuadrillaChange();
+}
+
+function onCuadrillaChange() {
+  const c = val('f-cuadrilla');
+  const base = (c && CFG.actividades[c]) ? CFG.actividades[c] : ACTIVIDADES_BASE;
+  const hist = getData().filter(r => !c || r.cuadrilla === c).map(r => r.actividad).filter(Boolean);
+  fillDL('dl-actividades', [...new Set([...base, ...hist])]);
+  if (!val('f-id')) {
+    setVal('f-fecha', sugerirFecha(c));
+    calcularSemana();
+  }
+  sugerirHoraInicio();
+  actualizarHintFecha(val('f-fecha'), c);
+}
+
+function toggleUbicacion() {
+  const esDesp = val('f-actividad').toLowerCase() === 'desplazamiento';
+  document.getElementById('box-origen').classList.toggle('hidden', !esDesp);
+  document.getElementById('box-destino').classList.toggle('hidden', !esDesp);
+  document.getElementById('box-tipo').classList.toggle('hidden', esDesp);
+  if (esDesp) {
+    document.getElementById('box-municipio').classList.add('hidden');
+    document.getElementById('box-municipio2').classList.add('hidden');
+    setVal('f-tipo'); setVal('f-municipio'); setVal('f-municipio2');
+  } else {
+    setVal('f-origen'); setVal('f-destino');
+    toggleTipo();
+  }
+}
+
+function toggleTipo() {
+  const tipo = val('f-tipo');
+  document.getElementById('box-municipio').classList.toggle('hidden', !tipo);
+  document.getElementById('box-municipio2').classList.toggle('hidden', tipo !== 'Tramo');
+  document.getElementById('lbl-municipio1').textContent = tipo === 'Tramo' ? 'Municipio 1 *' : 'Municipio *';
+  if (tipo !== 'Tramo') setVal('f-municipio2');
+  if (!tipo) setVal('f-municipio');
+}
+
+function sugerirHoraInicio() {
+  if (val('f-id')) return;
+  const fecha = val('f-fecha'), cuadrilla = val('f-cuadrilla');
+  if (!fecha || !cuadrilla) return;
+  const rows = getData()
+    .filter(r => r.fecha === fecha && r.cuadrilla === cuadrilla && r.hfin)
+    .sort((a,b) => a.hfin.localeCompare(b.hfin));
+  const sugerida = rows.length ? rows[rows.length-1].hfin : '07:50';
+  generarOpcionesHora('f-hinicio', sugerida);
+}
+
+function getUbicacion(r) {
+  if ((r.actividad||'').toLowerCase() === 'desplazamiento') return `${r.origen||''} -> ${r.destino||''}`;
+  if (r.tipo === 'Tramo') return `Tramo: ${r.municipio||''} -> ${r.municipio2||''}`;
+  if (r.tipo === 'Nodo')  return `Nodo: ${r.municipio||''}`;
+  return r.municipio || '';
+}
+
+/* ========================================================
+   CRUD AGENDA
+   ======================================================== */
+function guardar() {
+  const id         = val('f-id');
+  const fecha      = val('f-fecha');
+  const semana     = val('f-semana');
+  const cuadrilla  = val('f-cuadrilla');
+  const actividad  = val('f-actividad');
+  const tipo       = val('f-tipo');
+  const municipio  = val('f-municipio');
+  const municipio2 = val('f-municipio2');
+  const origen     = val('f-origen');
+  const destino    = val('f-destino');
+  const hinicio    = val('f-hinicio');
+  const hfin       = val('f-hfin');
+
+  if (!fecha || !cuadrilla || !actividad) { alert('⚠️ Completa: Fecha, Cuadrilla y Actividad.'); return; }
+  const esDesp = actividad.toLowerCase() === 'desplazamiento';
+  if (esDesp) {
+    if (!origen || !destino) { alert('⚠️ Para desplazamiento indica Origen y Destino.'); return; }
+  } else {
+    if (!tipo)      { alert('⚠️ Indica si la actividad es en Nodo o Tramo.'); return; }
+    if (!municipio) { alert('⚠️ Indica el Municipio.'); return; }
+    if (tipo === 'Tramo' && !municipio2) { alert('⚠️ Para Tramo indica el Municipio 2.'); return; }
+  }
+  if (hinicio && hfin && toMin(hfin) <= toMin(hinicio)) { alert('⚠️ La hora fin debe ser mayor que la hora inicio.'); return; }
+
+  const data  = getData();
+  const isNew = !id;
+  const row = {
+    id:           isNew ? Date.now() : Number(id),
+    fecha, dia: getDia(fecha), semana, cuadrilla, actividad,
+    tipo:         esDesp ? '' : tipo,
+    municipio:    esDesp ? '' : municipio,
+    municipio2:   (!esDesp && tipo === 'Tramo') ? municipio2 : '',
+    origen:       esDesp ? origen : '',
+    destino:      esDesp ? destino : '',
+    hinicio, hfin, duracion: calcDur(hinicio, hfin),
+    responsable:  val('f-responsable'),
+    vehiculo:     val('f-vehiculo'),
+    financiacion: val('f-financiacion'),
+    obs:          val('f-obs'),
+    updatedAt:    new Date().toISOString(),
+    estado:       isNew ? autoEstado({fecha,hinicio,hfin}) : (val('f-estado-hidden') || autoEstado({fecha,hinicio,hfin})),
+    manualEstado: !isNew && document.getElementById('f-manual-hidden').value === 'true'
+  };
+
+  if (isNew) { data.push(row); }
+  else {
+    const idx = data.findIndex(r => r.id === Number(id));
+    if (idx >= 0) data[idx] = row;
+  }
+  data.sort((a,b) => (a.fecha+(a.hinicio||'')).localeCompare(b.fecha+(b.hinicio||'')));
+  setData(data); initLists(); resetForm();
+  const ok = document.getElementById('msg-ok');
+  ok.style.display = 'inline'; setTimeout(() => ok.style.display = 'none', 2500);
+  renderTabla(); renderPreview(); renderResumen();
+}
+
+function resetForm() {
+  setVal('f-id',''); setVal('f-estado-hidden',''); setVal('f-manual-hidden','false');
+  setVal('f-fecha', sugerirFecha());
+  calcularSemana();
+  setVal('f-cuadrilla',''); setVal('f-actividad','');
+  setVal('f-tipo',''); setVal('f-municipio',''); setVal('f-municipio2','');
+  setVal('f-origen',''); setVal('f-destino','');
+  setVal('f-responsable',''); setVal('f-vehiculo','');
+  setVal('f-financiacion','No aplica'); setVal('f-obs','');
+  generarOpcionesHora('f-hinicio');
+  generarOpcionesHora('f-hfin');
+  ['box-tipo','box-municipio','box-municipio2','box-origen','box-destino']
+    .forEach(id => document.getElementById(id).classList.add('hidden'));
+  document.getElementById('hint-fecha').textContent = '';
+  document.getElementById('form-title').textContent = 'Registrar actividad';
+  document.getElementById('btn-save').textContent   = '💾 Guardar actividad';
+  document.getElementById('btn-cancel-edit').classList.add('hidden');
+  onCuadrillaChange();
+}
+
+function cancelarEdicion() { resetForm(); }
+
+function editar(id) {
+  const row = getData().find(r => r.id === id);
+  if (!row) return;
+  setVal('f-id', row.id);
+  setVal('f-estado-hidden', row.estado || 'Pendiente');
+  setVal('f-manual-hidden', String(row.manualEstado || false));
+  setVal('f-fecha', row.fecha); calcularSemana();
+  setVal('f-cuadrilla', row.cuadrilla); onCuadrillaChange();
+  setVal('f-actividad', row.actividad);
+  setVal('f-tipo',       row.tipo       || '');
+  setVal('f-municipio',  row.municipio  || '');
+  setVal('f-municipio2', row.municipio2 || '');
+  setVal('f-origen',     row.origen     || '');
+  setVal('f-destino',    row.destino    || '');
+  toggleUbicacion();
+  generarOpcionesHora('f-hinicio', row.hinicio || '');
+  generarOpcionesHora('f-hfin',    row.hfin    || '');
+  setVal('f-responsable',  row.responsable  || '');
+  setVal('f-vehiculo',     row.vehiculo     || '');
+  setVal('f-financiacion', row.financiacion || 'No aplica');
+  setVal('f-obs',          row.obs          || '');
+  document.getElementById('form-title').textContent = '✏️ Editar actividad';
+  document.getElementById('btn-save').textContent   = '✏️ Actualizar actividad';
+  document.getElementById('btn-cancel-edit').classList.remove('hidden');
+  showPage('agenda', document.querySelectorAll('.tab')[0]);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function eliminar(id) {
+  if (!confirm('¿Eliminar esta actividad?')) return;
+  setData(getData().filter(r => r.id !== id));
+  initLists(); renderTabla(); renderPreview(); renderResumen();
+}
+
+function actualizarEstado(id, nuevoEstado) {
+  const data = getData();
+  const idx  = data.findIndex(r => r.id === id);
+  if (idx < 0) return;
+  data[idx].estado       = nuevoEstado;
+  data[idx].manualEstado = true;
+  data[idx].updatedAt    = new Date().toISOString();
+  setData(data);
+  renderTabla(); renderResumen(); renderPreview();
+}
+
+/* ========================================================
+   CRUD PENDIENTES
+   ======================================================== */
+function toggleTipoPend() {
+  const tipo = document.getElementById('fp-tipo').value;
+  document.getElementById('fp-box-mun1').classList.toggle('hidden', !tipo || tipo === 'General');
+  document.getElementById('fp-box-mun2').classList.toggle('hidden', tipo !== 'Tramo');
+  document.getElementById('fp-lbl-mun1').textContent = tipo === 'Tramo' ? 'Municipio 1 *' : 'Municipio *';
+  if (tipo !== 'Tramo') setVal('fp-municipio2', '');
+  if (!tipo || tipo === 'General') setVal('fp-municipio', '');
+}
+
+function guardarPendiente() {
+  const id   = val('fp-id');
+  const tipo = val('fp-tipo');
+  const desc = val('fp-desc');
+  if (!tipo)  { alert('⚠️ Selecciona el Tipo (Nodo, Tramo o General).'); return; }
+  if (!desc)  { alert('⚠️ Escribe una Descripción del pendiente.'); return; }
+  if (tipo !== 'General' && !val('fp-municipio')) { alert('⚠️ Indica el Municipio.'); return; }
+  if (tipo === 'Tramo' && !val('fp-municipio2'))  { alert('⚠️ Para Tramo indica el Municipio 2.'); return; }
+
+  const data  = getPendientes();
+  const isNew = !id;
+  const existing = isNew ? null : data.find(r => r.id === Number(id));
+  const row = {
+    id:           isNew ? Date.now() : Number(id),
+    tipo,
+    municipio:    tipo !== 'General' ? val('fp-municipio')  : '',
+    municipio2:   tipo === 'Tramo'   ? val('fp-municipio2') : '',
+    descripcion:  desc,
+    cuadrilla:    val('fp-cuadrilla'),
+    prioridad:    val('fp-prioridad') || 'Media',
+    fechaReporte: val('fp-fecha') || new Date().toISOString().split('T')[0],
+    estado:       isNew ? 'Abierto' : (existing ? existing.estado : 'Abierto'),
+    obs:          val('fp-obs'),
+    updatedAt:    new Date().toISOString()
+  };
+
+  if (isNew) { data.push(row); }
+  else {
+    const idx = data.findIndex(r => r.id === Number(id));
+    if (idx >= 0) data[idx] = row;
+  }
+  setPendientes(data);
+  resetFormPend();
+  renderPendientes();
+  actualizarContadorPendientes();
+  renderResumen();
+  const ok = document.getElementById('msg-ok-pend');
+  ok.style.display = 'inline'; setTimeout(() => ok.style.display = 'none', 2500);
+}
+
+function resetFormPend() {
+  setVal('fp-id', '');
+  document.getElementById('fp-tipo').value      = '';
+  document.getElementById('fp-prioridad').value = 'Media';
+  setVal('fp-municipio', ''); setVal('fp-municipio2', '');
+  setVal('fp-desc', ''); setVal('fp-obs', '');
+  setVal('fp-cuadrilla', '');
+  document.getElementById('fp-fecha').value = new Date().toISOString().split('T')[0];
+  toggleTipoPend();
+  document.getElementById('form-pend-title').textContent = '🔔 Registrar pendiente';
+  document.getElementById('btn-cancel-pend').classList.add('hidden');
+}
+
+function cancelarEdicionPend() { resetFormPend(); }
+
+function editarPendiente(id) {
+  const row = getPendientes().find(r => r.id === id);
+  if (!row) return;
+  setVal('fp-id', row.id);
+  document.getElementById('fp-tipo').value      = row.tipo      || '';
+  document.getElementById('fp-prioridad').value = row.prioridad || 'Media';
+  document.getElementById('fp-cuadrilla').value = row.cuadrilla || '';
+  toggleTipoPend();
+  setVal('fp-municipio',  row.municipio  || '');
+  setVal('fp-municipio2', row.municipio2 || '');
+  setVal('fp-desc', row.descripcion || '');
+  setVal('fp-obs',  row.obs         || '');
+  document.getElementById('fp-fecha').value = row.fechaReporte || new Date().toISOString().split('T')[0];
+  document.getElementById('form-pend-title').textContent = '✏️ Editar pendiente';
+  document.getElementById('btn-cancel-pend').classList.remove('hidden');
+  showPage('pendientes', document.querySelectorAll('.tab')[4]);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function eliminarPendiente(id) {
+  if (!confirm('¿Eliminar este pendiente?')) return;
+  setPendientes(getPendientes().filter(r => r.id !== id));
+  renderPendientes();
+  actualizarContadorPendientes();
+  renderResumen();
+}
+
+function cambiarEstadoPendiente(id, estado) {
+  const data = getPendientes();
+  const idx  = data.findIndex(r => r.id === id);
+  if (idx < 0) return;
+  data[idx].estado    = estado;
+  data[idx].updatedAt = new Date().toISOString();
+  setPendientes(data);
+  renderPendientes();
+  actualizarContadorPendientes();
+  renderResumen();
+}
+
+function toggleResuelto(id, checked) {
+  cambiarEstadoPendiente(id, checked ? 'Resuelto' : 'Abierto');
+}
+
+function limpiarFiltrosPend() {
+  document.getElementById('fp-fil-estado').value    = '';
+  document.getElementById('fp-fil-cuadrilla').value = '';
+  document.getElementById('fp-fil-prioridad').value = '';
+  document.getElementById('fp-fil-tipo').value      = '';
+  document.getElementById('fp-fil-ubicacion').value = '';
+  document.getElementById('fp-fil-desc').value      = '';
+  document.getElementById('fp-fil-desde').value     = '';
+  document.getElementById('fp-fil-hasta').value     = '';
+  renderPendientes();
+}
+
+function prioBadgeClass(p) {
+  if (p === 'Alta') return 'prioridad-alta';
+  if (p === 'Baja') return 'prioridad-baja';
+  return 'prioridad-media';
+}
+
+function pendEstadoClass(e) {
+  if (e === 'Abierto')  return 'st-abierto';
+  if (e === 'Agendado') return 'st-agendado';
+  return 'st-resuelto';
+}
+
+function getUbicacionPend(r) {
+  if (r.tipo === 'Tramo')   return `${r.municipio || ''} -> ${r.municipio2 || ''}`;
+  if (r.tipo === 'General') return 'General';
+  return r.municipio || '';
+}
+
+function renderPendientes() {
+  const filEstado    = document.getElementById('fp-fil-estado')?.value    || '';
+  const filCuadrilla = document.getElementById('fp-fil-cuadrilla')?.value || '';
+  const filPrioridad = document.getElementById('fp-fil-prioridad')?.value || '';
+  const filTipo      = document.getElementById('fp-fil-tipo')?.value      || '';
+  const filUbic      = (document.getElementById('fp-fil-ubicacion')?.value || '').toLowerCase().trim();
+  const filDesc      = (document.getElementById('fp-fil-desc')?.value     || '').toLowerCase().trim();
+  const filDesde     = document.getElementById('fp-fil-desde')?.value     || '';
+  const filHasta     = document.getElementById('fp-fil-hasta')?.value     || '';
+
+  let rows = getPendientes();
+  if (filEstado)    rows = rows.filter(r => r.estado    === filEstado);
+  if (filCuadrilla) rows = rows.filter(r => r.cuadrilla === filCuadrilla);
+  if (filPrioridad) rows = rows.filter(r => r.prioridad === filPrioridad);
+  if (filTipo)      rows = rows.filter(r => r.tipo      === filTipo);
+  if (filUbic)      rows = rows.filter(r =>
+    (r.municipio  || '').toLowerCase().includes(filUbic) ||
+    (r.municipio2 || '').toLowerCase().includes(filUbic) ||
+    getUbicacionPend(r).toLowerCase().includes(filUbic)
+  );
+  if (filDesc)      rows = rows.filter(r =>
+    (r.descripcion || '').toLowerCase().includes(filDesc) ||
+    (r.obs         || '').toLowerCase().includes(filDesc)
+  );
+  if (filDesde)     rows = rows.filter(r => (r.fechaReporte || '') >= filDesde);
+  if (filHasta)     rows = rows.filter(r => (r.fechaReporte || '') <= filHasta);
+
+  const prioOrd = { 'Alta': 0, 'Media': 1, 'Baja': 2 };
+  rows.sort((a, b) => {
+    if (a.estado === 'Resuelto' && b.estado !== 'Resuelto') return 1;
+    if (a.estado !== 'Resuelto' && b.estado === 'Resuelto') return -1;
+    const po = (prioOrd[a.prioridad] ?? 1) - (prioOrd[b.prioridad] ?? 1);
+    if (po !== 0) return po;
+    return (a.fechaReporte || '').localeCompare(b.fechaReporte || '');
+  });
+
+  const cont = document.getElementById('pend-tabla-container');
+  if (!cont) return;
+  if (!rows.length) {
+    cont.innerHTML = '<div class="empty">Sin pendientes para los filtros seleccionados.</div>';
+    return;
+  }
+
+  let html = '<div style="overflow-x:auto"><table><thead><tr>';
+  ['✔','Tipo','Ubicación','Descripción','Cuadrilla','Prioridad','F. Reporte','Estado','Obs.','Acciones']
+    .forEach(c => html += `<th>${c}</th>`);
+  html += '</tr></thead><tbody>';
+
+  rows.forEach(r => {
+    const resuelta   = r.estado === 'Resuelto';
+    const tipoBadge  = r.tipo === 'Nodo'
+      ? `<span class="badge badge-nodo">Nodo</span>`
+      : r.tipo === 'Tramo'
+        ? `<span class="badge badge-tramo">Tramo</span>`
+        : `<span class="badge badge-tr">General</span>`;
+
+    html += `<tr class="${resuelta ? 'pend-resuelta' : ''}">
+      <td style="text-align:center;width:36px">
+        <input type="checkbox" ${resuelta ? 'checked' : ''}
+          onchange="toggleResuelto(${r.id}, this.checked)"
+          title="${resuelta ? 'Marcar como Abierto' : 'Marcar como Resuelto'}">
+      </td>
+      <td>${tipoBadge}</td>
+      <td>${esc(getUbicacionPend(r))}</td>
+      <td style="min-width:180px"><strong>${esc(r.descripcion || '')}</strong></td>
+      <td>${r.cuadrilla
+        ? `<span class="badge ${badgeClass(r.cuadrilla)}">${esc(r.cuadrilla)}</span>`
+        : '<span style="color:#aaa;font-size:.75rem">Sin asignar</span>'}</td>
+      <td><span class="badge ${prioBadgeClass(r.prioridad)}">${esc(r.prioridad || '')}</span></td>
+      <td>${esc(r.fechaReporte || '')}</td>
+      <td>
+        <select class="inline-select" onchange="cambiarEstadoPendiente(${r.id}, this.value)">
+          ${['Abierto','Agendado','Resuelto'].map(e =>
+            `<option ${e === r.estado ? 'selected' : ''}>${e}</option>`
+          ).join('')}
+        </select>
+      </td>
+      <td>${esc(r.obs || '')}</td>
+      <td>
+        <div style="display:flex;gap:5px;flex-wrap:wrap">
+          <button class="btn btn-primary small-btn" onclick="editarPendiente(${r.id})">✏️</button>
+          <button class="btn btn-danger small-btn"  onclick="eliminarPendiente(${r.id})">✕</button>
+        </div>
+      </td>
+    </tr>`;
+  });
+
+  cont.innerHTML = html + '</tbody></table></div>';
+}
+
+function actualizarContadorPendientes() {
+  const abiertos = getPendientes().filter(r => r.estado === 'Abierto').length;
+  const badge  = document.getElementById('badge-pend');
+  const alerta = document.getElementById('alerta-pendientes');
+  const txt    = document.getElementById('txt-alerta-pend');
+
+  if (badge) {
+    badge.textContent = abiertos;
+    badge.classList.toggle('hidden', abiertos === 0);
+  }
+  if (alerta && txt) {
+    if (abiertos > 0) {
+      txt.textContent = `${abiertos} pendiente${abiertos > 1 ? 's' : ''} sin agendar`;
+      alerta.classList.remove('hidden');
+    } else {
+      alerta.classList.add('hidden');
+    }
+  }
+}
+
+function irAPendientes() {
+  showPage('pendientes', document.querySelectorAll('.tab')[4]);
+}
+
+/* ========================================================
+   RENDER TABLA AGENDA
+   ======================================================== */
+function filtrar(data, semana, cuadrilla, desde, hasta, estado = '') {
+  return data.filter(r => {
+    if (semana    && r.semana    !== semana)       return false;
+    if (cuadrilla && r.cuadrilla !== cuadrilla)    return false;
+    if (estado    && estadoEfectivo(r) !== estado) return false;
+    if (desde     && r.fecha < desde)              return false;
+    if (hasta     && r.fecha > hasta)              return false;
+    return true;
+  });
+}
+
+function buildTabla(rows, { acciones = false, estadoEditable = false } = {}) {
+  if (!rows.length) return '<div class="empty">Sin actividades para los filtros seleccionados.</div>';
+  const cols = ['Fecha','Día','Sem.','Cuadrilla','Actividad','Estado','Tipo','Ubicación',
+                'H. inicio','H. fin','Duración','Responsable','Vehículo','Financiación','Obs.'];
+  let html = '<div style="overflow-x:auto"><table><thead><tr>';
+  cols.forEach(c => html += `<th>${c}</th>`);
+  if (acciones) html += '<th>Acciones</th>';
+  html += '</tr></thead><tbody>';
+
+  rows.forEach(r => {
+    const est    = estadoEfectivo(r);
+    const esDesp = (r.actividad||'').toLowerCase() === 'desplazamiento';
+    const tipoDisplay = esDesp
+      ? '<span class="badge" style="background:#f0f0f0;color:#555">Desp.</span>'
+      : r.tipo
+        ? `<span class="badge ${r.tipo==='Nodo'?'badge-nodo':'badge-tramo'}">${r.tipo}</span>`
+        : '';
+    html += `<tr>
+      <td>${esc(r.fecha)}</td><td>${esc(r.dia||'')}</td><td>${esc(r.semana||'')}</td>
+      <td><span class="badge ${badgeClass(r.cuadrilla)}">${esc(r.cuadrilla)}</span></td>
+      <td>${esc(r.actividad||'')}</td>
+      <td>${estadoEditable
+        ? `<select class="inline-select" onchange="actualizarEstado(${r.id},this.value)">
+             ${CFG.estados.map(e=>`<option ${e===est?'selected':''}>${e}</option>`).join('')}
+           </select>`
+        : `<span class="badge ${estadoClass(est)}">${est}</span>`
+      }</td>
+      <td>${tipoDisplay}</td>
+      <td>${esc(getUbicacion(r))}</td>
+      <td>${esc(r.hinicio||'')}</td><td>${esc(r.hfin||'')}</td>
+      <td class="duracion">${esc(r.duracion||'')}</td>
+      <td>${esc(r.responsable||'')}</td><td>${esc(r.vehiculo||'')}</td>
+      <td>${esc(r.financiacion||'')}</td><td>${esc(r.obs||'')}</td>`;
+    if (acciones) {
+      html += `<td><div style="display:flex;gap:5px;flex-wrap:wrap">
+        <button class="btn btn-primary small-btn" onclick="editar(${r.id})">✏️ Editar</button>
+        <button class="btn btn-danger small-btn"  onclick="eliminar(${r.id})">✕ Eliminar</button>
+      </div></td>`;
+    }
+    html += '</tr>';
+  });
+  return html + '</tbody></table></div>';
+}
+
+function renderTabla() {
+  const rows = filtrar(getData(),
+    document.getElementById('fil-semana').value,
+    document.getElementById('fil-cuadrilla').value.trim(),
+    document.getElementById('fil-desde').value,
+    document.getElementById('fil-hasta').value,
+    document.getElementById('fil-estado').value
+  ).sort((a,b) => (a.fecha+(a.hinicio||'')).localeCompare(b.fecha+(b.hinicio||'')));
+  document.getElementById('tabla-container').innerHTML = buildTabla(rows, { acciones:true, estadoEditable:true });
+}
+
+function limpiarFiltros() {
+  ['fil-semana','fil-estado','fil-desde','fil-hasta'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('fil-cuadrilla').value = '';
+  renderTabla();
+}
+
+function renderPreview() {
+  const rows = filtrar(getData(),
+    document.getElementById('exp-semana').value,
+    document.getElementById('exp-cuadrilla').value.trim(),
+    '','',''
+  ).sort((a,b) => (a.fecha+(a.hinicio||'')).localeCompare(b.fecha+(b.hinicio||'')));
+  document.getElementById('preview-tabla').innerHTML = buildTabla(rows, { acciones:false, estadoEditable:false });
+}
+
+/* ========================================================
+   EXPORTAR
+   ======================================================== */
+function csv(v = '') { return `"${String(v ?? '').replaceAll('"','""')}"`; }
+function exportarCSV() {
+  const semana    = document.getElementById('exp-semana').value;
+  const cuadrilla = document.getElementById('exp-cuadrilla').value.trim();
+  const rows = filtrar(getData(), semana, cuadrilla, '','');
+  if (!rows.length) { alert('Sin datos para exportar.'); return; }
+  const heads = ['Fecha','Dia','Semana','Cuadrilla','Actividad','Estado','Tipo',
+                 'Municipio','Municipio2','Origen','Destino',
+                 'H_inicio','H_fin','Duracion','Responsable','Vehiculo','Financiacion','Observaciones'];
+  const lines = [heads.join(',')];
+  rows.forEach(r => lines.push([
+    csv(r.fecha),csv(r.dia),csv(r.semana),csv(r.cuadrilla),csv(r.actividad),
+    csv(estadoEfectivo(r)),csv(r.tipo),csv(r.municipio),csv(r.municipio2),
+    csv(r.origen),csv(r.destino),csv(r.hinicio),csv(r.hfin),csv(r.duracion),
+    csv(r.responsable),csv(r.vehiculo),csv(r.financiacion),csv(r.obs)
+  ].join(',')));
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([lines.join('\n')], { type:'text/csv;charset=utf-8;' }));
+  a.download = `agenda_${(cuadrilla||'todas').replace(/ /g,'_')}_sem${(semana||'todas').replace(/[· ]/g,'_').replace(/__+/g,'_')}.csv`;
+  a.click();
+}
+
+function exportarPDF() {
+  const semana    = document.getElementById('exp-semana').value;
+  const cuadrilla = document.getElementById('exp-cuadrilla').value.trim();
+  const rows = filtrar(getData(), semana, cuadrilla, '','');
+  if (!rows.length) { alert('Sin datos para exportar.'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'landscape', unit:'mm', format:'a4' });
+  const fecha = new Date();
+  const titulo = `Agenda${cuadrilla?` — ${cuadrilla}`:''}${semana?` — Semana ${semana}`:''}`;
+  doc.setFontSize(16); doc.setTextColor(31,78,120);
+  doc.text('Sinergy Soluciones Integrales S.A.S.', 15, 15);
+  doc.setFontSize(11); doc.setTextColor(100,100,100);
+  doc.text('Direccion de Infraestructura', 15, 22);
+  doc.setFontSize(12); doc.setTextColor(31,78,120);
+  doc.text(titulo, 15, 30);
+  doc.setFontSize(9); doc.setTextColor(150,150,150);
+  doc.text(`Generado: ${fecha.toLocaleDateString('es-CO')} ${fecha.toLocaleTimeString('es-CO')}`, 15, 37);
+
+  const tableData = rows.map(r => [
+    r.fecha, r.dia||'', r.semana||'', r.cuadrilla, r.actividad||'',
+    estadoEfectivo(r), r.tipo||'', getUbicacion(r).replace(/→/g,'->'),
+    r.hinicio||'', r.hfin||'', r.duracion||'',
+    r.responsable||'', r.vehiculo||'', r.financiacion||'', r.obs||''
+  ]);
+
+  doc.autoTable({
+    head:[['Fecha','Dia','Sem.','Cuadrilla','Actividad','Estado','Tipo','Ubicacion',
+           'H. inicio','H. fin','Duracion','Responsable','Vehiculo','Financiacion','Obs.']],
+    body: tableData, startY: 42, theme:'grid',
+    headStyles:{ fillColor:[31,78,120], textColor:[255,255,255], fontStyle:'bold', fontSize:8 },
+    bodyStyles:{ fontSize:7.5, textColor:[50,50,50] },
+    columnStyles:{
+      0:{halign:'center'},1:{halign:'center'},2:{halign:'center'},
+      5:{halign:'center'},6:{halign:'center'},8:{halign:'center'},
+      9:{halign:'center'},10:{halign:'center'}
+    },
+    margin:{ left:10, right:10 },
+    didDrawPage(data) {
+      const ph = doc.internal.pageSize.getHeight();
+      doc.setFontSize(7); doc.setTextColor(200,200,200);
+      doc.text('Documento generado automaticamente - Sistema de Agendamiento Sinergy', 15, ph - 8);
+    }
+  });
+  doc.save(`agenda_${(cuadrilla||'todas').replace(/ /g,'_')}_sem${(semana||'todas').replace(/[· ]/g,'_').replace(/__+/g,'_')}.pdf`);
+}
+
+/* ========================================================
+   RESUMEN
+   ======================================================== */
+function renderResumen() {
+  const data = getData().sort((a,b) => (a.fecha+(a.hinicio||'')).localeCompare(b.fecha+(b.hinicio||'')));
+  const cont = document.getElementById('resumen-content');
+
+  let html = '';
+
+  if (!data.length) {
+    cont.innerHTML = html + '<div class="card"><div class="empty">Sin actividades registradas aún.</div></div>';
+    return;
+  }
+
+  const porEstado = e => data.filter(r => estadoEfectivo(r) === e).length;
+  html += `<div class="stat-grid">
+    <div class="stat"><div class="num">${data.length}</div><div class="lbl">Total actividades</div></div>
+    <div class="stat"><div class="num">${porEstado('Pendiente')}</div><div class="lbl">Pendientes</div></div>
+    <div class="stat"><div class="num">${porEstado('En curso')}</div><div class="lbl">En curso</div></div>
+    <div class="stat"><div class="num">${porEstado('Ejecutado')}</div><div class="lbl">Ejecutadas</div></div>
+    <div class="stat"><div class="num">${porEstado('Cancelado')}</div><div class="lbl">Canceladas</div></div>
+  </div>`;
+
+  const semanas = [...new Set(data.map(r => r.semana).filter(Boolean))].sort((a, b) => {
+    const [ma, la] = a.split(' · ');
+    const [mb, lb] = b.split(' · ');
+    const mi = MESES.indexOf(ma), mj = MESES.indexOf(mb);
+    if (mi !== mj) return (mi === -1 ? 99 : mi) - (mj === -1 ? 99 : mj);
+    return (la||'').localeCompare(lb||'');
+  });
+
+  /* selector rápido de semana en resumen */
+  if (semanas.length > 1) {
+    html += `<div class="card no-print" style="padding:14px 20px;">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <strong style="color:var(--azul);font-size:.9rem;">📅 Ir a semana:</strong>
+        ${semanas.map(s => `<button class="btn btn-primary" style="padding:5px 12px;font-size:.8rem;"
+          onclick="document.getElementById('sem-block-${esc(s)}')?.scrollIntoView({behavior:'smooth',block:'start'})"
+          >${esc(s)}</button>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  semanas.forEach(sem => {
+    const rowsSem = data.filter(r => r.semana === sem);
+    html += `<div class="card" id="sem-block-${esc(sem)}"><h2>📅 ${sem} — ${rowsSem.length} actividades</h2>`;
+    CFG.cuadrillas.forEach(c => {
+      const rc = rowsSem.filter(r => r.cuadrilla === c);
+      if (!rc.length) return;
+      html += `<div class="week-block">
+        <div class="week-title"><span class="badge ${badgeClass(c)}">${c}</span> · ${rc.length} actividades</div>
+        ${buildTabla(rc, { acciones:false, estadoEditable:false })}
+      </div>`;
+    });
+    html += '</div>';
+  });
+
+  cont.innerHTML = html;
+}
+
+
+/* ========================================================
+   GESTIONES DEL ÁREA
+   ======================================================== */
+const KEY_G = 'sinergy_gestiones_v1';
+function getGestiones()   { try { return JSON.parse(localStorage.getItem(KEY_G)) || []; } catch(e) { return []; } }
+function setGestiones(d)  { localStorage.setItem(KEY_G, JSON.stringify(d)); syncSheet('gestiones',  d); }
+
+function catClass(cat) {
+  const m = {
+    'Enviar correo':'cat-correo','Solicitar viáticos':'cat-viaticos',
+    'Gestión de uniformes':'cat-uniformes','Responder radicado':'cat-radicado',
+    'Solicitud de permiso':'cat-permiso','Trámite administrativo':'cat-tramite'
+  };
+  return m[cat] || 'cat-otro';
+}
+function gstEstadoClass(e) {
+  if (e==='Pendiente')  return 'gst-pendiente';
+  if (e==='En proceso') return 'gst-proceso';
+  if (e==='Completado') return 'gst-completado';
+  return 'gst-cancelado';
+}
+
+function guardarGestion() {
+  const id     = val('fg-id');
+  const cat    = val('fg-categoria');
+  const asunto = val('fg-asunto');
+  if (!cat)    { alert('⚠️ Selecciona la Categoría.'); return; }
+  if (!asunto) { alert('⚠️ Escribe el Asunto / Descripción.'); return; }
+
+  const data  = getGestiones();
+  const isNew = !id;
+  const row = {
+    id:          isNew ? Date.now() : Number(id),
+    categoria:   cat,
+    asunto,
+    dirigido:    val('fg-dirigido'),
+    prioridad:   document.getElementById('fg-prioridad').value || 'Media',
+    estado:      document.getElementById('fg-estado').value   || 'Pendiente',
+    fecha:       document.getElementById('fg-fecha').value || new Date().toISOString().split('T')[0],
+    fechaLimite: document.getElementById('fg-fecha-limite').value || '',
+    obs:         document.getElementById('fg-obs').value.trim(),
+    updatedAt:   new Date().toISOString()
+  };
+
+  if (isNew) { data.push(row); }
+  else {
+    const idx = data.findIndex(r => r.id === Number(id));
+    if (idx >= 0) data[idx] = row;
+  }
+  setGestiones(data);
+  resetFormGest();
+  renderGestiones();
+  actualizarContadorGestiones();
+  renderResumen();
+  const ok = document.getElementById('msg-ok-gest');
+  ok.style.display = 'inline'; setTimeout(() => ok.style.display = 'none', 2500);
+}
+
+function resetFormGest() {
+  setVal('fg-id',''); setVal('fg-asunto',''); setVal('fg-dirigido','');
+  setVal('fg-categoria', '');
+  document.getElementById('fg-prioridad').value     = 'Media';
+  document.getElementById('fg-estado').value        = 'Pendiente';
+  document.getElementById('fg-fecha').value         = new Date().toISOString().split('T')[0];
+  document.getElementById('fg-fecha-limite').value  = '';
+  document.getElementById('fg-obs').value           = '';
+  document.getElementById('form-gest-title').textContent = '📝 Registrar gestión';
+  document.getElementById('btn-cancel-gest').classList.add('hidden');
+}
+
+function cancelarEdicionGest() { resetFormGest(); }
+
+function editarGestion(id) {
+  const row = getGestiones().find(r => r.id === id);
+  if (!row) return;
+  setVal('fg-id', row.id);
+  setVal('fg-categoria', row.categoria || '');
+  document.getElementById('fg-prioridad').value    = row.prioridad || 'Media';
+  document.getElementById('fg-estado').value       = row.estado    || 'Pendiente';
+  document.getElementById('fg-fecha').value        = row.fecha     || '';
+  document.getElementById('fg-fecha-limite').value = row.fechaLimite || '';
+  setVal('fg-asunto',   row.asunto   || '');
+  setVal('fg-dirigido', row.dirigido || '');
+  document.getElementById('fg-obs').value = row.obs || '';
+  document.getElementById('form-gest-title').textContent = '✏️ Editar gestión';
+  document.getElementById('btn-cancel-gest').classList.remove('hidden');
+  showPage('gestiones', document.querySelectorAll('.tab')[5]);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function eliminarGestion(id) {
+  if (!confirm('¿Eliminar esta gestión?')) return;
+  setGestiones(getGestiones().filter(r => r.id !== id));
+  renderGestiones(); actualizarContadorGestiones(); renderResumen();
+}
+
+function cambiarEstadoGestion(id, estado) {
+  const data = getGestiones();
+  const idx  = data.findIndex(r => r.id === id);
+  if (idx < 0) return;
+  data[idx].estado    = estado;
+  data[idx].updatedAt = new Date().toISOString();
+  setGestiones(data);
+  renderGestiones(); actualizarContadorGestiones(); renderResumen();
+}
+
+function limpiarFiltrosGest() {
+  document.getElementById('fg-fil-cat').value     = '';
+  document.getElementById('fg-fil-estado').value  = '';
+  document.getElementById('fg-fil-prio').value    = '';
+  document.getElementById('fg-fil-asunto').value  = '';
+  document.getElementById('fg-fil-dirigido').value= '';
+  document.getElementById('fg-fil-desde').value   = '';
+  document.getElementById('fg-fil-hasta').value   = '';
+  renderGestiones();
+}
+
+function renderGestiones() {
+  // Actualizar datalist de categorías con valores únicos existentes
+  const allCats = [...new Set(getGestiones().map(r => r.categoria).filter(Boolean))];
+  const dlFil = document.getElementById('dl-fil-cat-gest');
+  if (dlFil) dlFil.innerHTML = allCats.map(c => `<option value="${esc(c)}">`).join('');
+  const dlForm = document.getElementById('dl-categorias-gest');
+  if (dlForm) {
+    const base = ['Enviar correo','Solicitar viáticos','Gestión de uniformes','Responder radicado',
+                  'Solicitud de permiso','Trámite administrativo','Solicitud de dotación',
+                  'Gestión de contrato','Reporte interno','Coordinación con funcionario'];
+    const merged = [...new Set([...base, ...allCats])];
+    dlForm.innerHTML = merged.map(c => `<option value="${esc(c)}">`).join('');
+  }
+  const filCat     = document.getElementById('fg-fil-cat')?.value         || '';
+  const filEstado  = document.getElementById('fg-fil-estado')?.value      || '';
+  const filPrio    = document.getElementById('fg-fil-prio')?.value        || '';
+  const filAsunto  = (document.getElementById('fg-fil-asunto')?.value     || '').toLowerCase().trim();
+  const filDirig   = (document.getElementById('fg-fil-dirigido')?.value   || '').toLowerCase().trim();
+  const filDesde   = document.getElementById('fg-fil-desde')?.value       || '';
+  const filHasta   = document.getElementById('fg-fil-hasta')?.value       || '';
+
+  let rows = getGestiones();
+  if (filCat)    rows = rows.filter(r => r.categoria === filCat);
+  if (filEstado) rows = rows.filter(r => r.estado    === filEstado);
+  if (filPrio)   rows = rows.filter(r => r.prioridad === filPrio);
+  if (filAsunto) rows = rows.filter(r =>
+    (r.asunto || '').toLowerCase().includes(filAsunto) ||
+    (r.obs    || '').toLowerCase().includes(filAsunto)
+  );
+  if (filDirig)  rows = rows.filter(r =>
+    (r.dirigido || '').toLowerCase().includes(filDirig)
+  );
+  if (filDesde)  rows = rows.filter(r => (r.fecha || '') >= filDesde);
+  if (filHasta)  rows = rows.filter(r => (r.fecha || '') <= filHasta);
+
+  const prioOrd = { 'Alta': 0, 'Media': 1, 'Baja': 2 };
+  rows.sort((a, b) => {
+    if (a.estado === 'Completado' && b.estado !== 'Completado') return 1;
+    if (a.estado !== 'Completado' && b.estado === 'Completado') return -1;
+    const po = (prioOrd[a.prioridad]??1) - (prioOrd[b.prioridad]??1);
+    if (po !== 0) return po;
+    return (a.fecha||'').localeCompare(b.fecha||'');
+  });
+
+  const cont = document.getElementById('gest-tabla-container');
+  if (!cont) return;
+  if (!rows.length) {
+    cont.innerHTML = '<div class="empty">Sin gestiones para los filtros seleccionados.</div>';
+    return;
+  }
+
+  let html = '<div style="overflow-x:auto"><table><thead><tr>';
+  ['✔','Categoría','Asunto','Dirigido a','Prioridad','Estado','Fecha','F. Límite','Obs.','Acciones']
+    .forEach(c => html += `<th>${c}</th>`);
+  html += '</tr></thead><tbody>';
+
+  const ESTADOS_GEST = ['Pendiente','En proceso','Completado','Cancelado'];
+
+  rows.forEach(r => {
+    const completada = r.estado === 'Completado' || r.estado === 'Cancelado';
+    const hoy = new Date().toISOString().split('T')[0];
+    const vencida = r.fechaLimite && r.fechaLimite < hoy && r.estado !== 'Completado' && r.estado !== 'Cancelado';
+    html += `<tr class="${completada ? 'gest-completada' : ''}">
+      <td style="text-align:center;width:36px">
+        <input type="checkbox" ${completada ? 'checked' : ''}
+          onchange="cambiarEstadoGestion(${r.id}, this.checked ? 'Completado' : 'Pendiente')"
+          title="${completada ? 'Marcar como Pendiente' : 'Marcar como Completado'}">
+      </td>
+      <td><span class="badge ${catClass(r.categoria)}">${esc(r.categoria||'')}</span></td>
+      <td style="min-width:200px"><strong>${esc(r.asunto||'')}</strong></td>
+      <td>${esc(r.dirigido||'')}</td>
+      <td><span class="badge ${prioBadgeClass(r.prioridad)}">${esc(r.prioridad||'')}</span></td>
+      <td>
+        <select class="inline-select" onchange="cambiarEstadoGestion(${r.id}, this.value)">
+          ${ESTADOS_GEST.map(e=>`<option ${e===r.estado?'selected':''}>${e}</option>`).join('')}
+        </select>
+      </td>
+      <td>${esc(r.fecha||'')}</td>
+      <td style="${vencida?'color:#C00000;font-weight:700':''}">${esc(r.fechaLimite||'')}${vencida?' ⚠️':''}</td>
+      <td style="max-width:200px;white-space:pre-wrap;font-size:.78rem">${esc(r.obs||'')}</td>
+      <td><div style="display:flex;gap:5px;flex-wrap:wrap">
+        <button class="btn btn-primary small-btn" onclick="editarGestion(${r.id})">✏️ Editar</button>
+        <button class="btn btn-danger small-btn"  onclick="eliminarGestion(${r.id})">✕</button>
+      </div></td>
+    </tr>`;
+  });
+  cont.innerHTML = html + '</tbody></table></div>';
+}
+
+function actualizarContadorGestiones() {
+  const pendientes = getGestiones().filter(r => r.estado === 'Pendiente' || r.estado === 'En proceso').length;
+  const badge = document.getElementById('badge-gest');
+  if (badge) {
+    badge.textContent = pendientes;
+    badge.classList.toggle('hidden', pendientes === 0);
+  }
+}
+
+function exportarGestionesCSV() {
+  const rows = getGestiones();
+  if (!rows.length) { alert('Sin gestiones para exportar.'); return; }
+  const heads = ['ID','Categoria','Asunto','Dirigido_a','Prioridad','Estado','Fecha','Fecha_limite','Observaciones','Actualizado'];
+  const lines = [heads.join(',')];
+  rows.forEach(r => lines.push([
+    csv(r.id),csv(r.categoria),csv(r.asunto),csv(r.dirigido),csv(r.prioridad),
+    csv(r.estado),csv(r.fecha),csv(r.fechaLimite),csv(r.obs),csv(r.updatedAt)
+  ].join(',')));
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([lines.join('\n')], { type:'text/csv;charset=utf-8;' }));
+  a.download = `gestiones_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+}
+
+/* ========================================================
+   NAVEGACIÓN
+   ======================================================== */
+function showPage(name, tabEl) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  if (tabEl?.classList?.contains('tab')) tabEl.classList.add('active');
+  if (name === 'listado')    renderTabla();
+  if (name === 'exportar')   renderPreview();
+  if (name === 'resumen')    renderResumen();
+  if (name === 'pendientes') renderPendientes();
+  if (name === 'gestiones')  { renderGestiones(); actualizarContadorGestiones(); }
+}
+
+/* ========================================================
+   INICIALIZACIÓN
+   ======================================================== */
+initLists();
+resetForm();
+resetFormPend();
+resetFormGest();
+renderTabla();
+renderResumen();
+renderPendientes();
+actualizarContadorPendientes();
+renderGestiones();
+actualizarContadorGestiones();
+cargarDesdeSheets();
+</script>
+</body>
+</html>
