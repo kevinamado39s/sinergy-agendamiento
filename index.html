@@ -128,8 +128,25 @@
     <h1>📡 Agendamiento de Cuadrillas</h1>
     <span>Sinergy Soluciones Integrales S.A.S. — Dirección de Infraestructura</span>
   </div>
-  <div id="sync-status" style="font-size:.8rem;opacity:.9;min-width:140px;text-align:right;"></div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <div id="sync-status" style="font-size:.8rem;opacity:.9;min-width:140px;text-align:right;"></div>
+    <button onclick="abrirConfigURL()" title="Configurar URL de sincronización"
+      style="background:rgba(255,255,255,.2);border:none;border-radius:5px;color:white;padding:5px 8px;cursor:pointer;font-size:.8rem;">⚙️</button>
+  </div>
 </header>
+
+<!-- Modal configuración URL -->
+<div id="modal-url" class="modal-overlay hidden">
+  <div class="modal-box" style="max-width:420px;">
+    <p style="font-weight:700;margin-bottom:8px;">⚙️ URL de sincronización (Apps Script)</p>
+    <input id="input-gas-url" type="text" placeholder="https://script.google.com/macros/s/.../exec"
+      style="width:100%;padding:8px;border:1px solid #ccc;border-radius:5px;font-size:.82rem;margin-bottom:14px;">
+    <div class="modal-btn-row">
+      <button class="btn btn-primary" onclick="guardarConfigURL()">💾 Guardar</button>
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-url').classList.add('hidden')">Cancelar</button>
+    </div>
+  </div>
+</div>
 
 <div class="tabs">
   <div class="tab active" onclick="showPage('agenda',this)">📋 Nuevo Registro</div>
@@ -564,6 +581,22 @@
 /* ========================================================
    MODAL DE CONFIRMACIÓN (reemplaza confirm() nativo)
    ======================================================== */
+
+function abrirConfigURL() {
+  const input = document.getElementById('input-gas-url');
+  input.value = GAS_URL || '';
+  document.getElementById('modal-url').classList.remove('hidden');
+  input.focus();
+}
+function guardarConfigURL() {
+  const url = document.getElementById('input-gas-url').value.trim();
+  if (!url || !url.startsWith('http')) { alert('Pega una URL válida.'); return; }
+  GAS_URL = url;
+  localStorage.setItem('sinergy_gas_url', url);
+  document.getElementById('modal-url').classList.add('hidden');
+  cargarDesdeSheets();
+}
+
 function confirmarEliminar(mensaje, callback) {
   const overlay = document.getElementById('modal-confirm');
   const msg     = document.getElementById('modal-msg');
@@ -580,7 +613,11 @@ function confirmarEliminar(mensaje, callback) {
 /* ========================================================
    GOOGLE SHEETS SYNC
    ======================================================== */
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbwCEHeVFiebmHUrZMx115fVaBiKDC3MhJ3nRjOXyF_Jo3wrtvT1BF8-Kx0hGsj0oWM4/exec'; // 👈 Pega aquí la URL de tu Apps Script
+// GAS_URL: primero busca en localStorage (persiste entre actualizaciones),
+// luego usa la URL fija si está definida, sino pide al usuario
+const _GAS_STORED = localStorage.getItem('sinergy_gas_url') || '';
+const _GAS_HARDCODED = 'REEMPLAZAR_CON_TU_URL';
+let GAS_URL = _GAS_STORED || (_GAS_HARDCODED !== 'REEMPLAZAR_CON_TU_URL' ? _GAS_HARDCODED : '');
 
 function setSyncStatus(s) {
   const el = document.getElementById('sync-status');
