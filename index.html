@@ -1074,7 +1074,9 @@ function editar(id) {
   setVal('f-id', row.id);
   setVal('f-estado-hidden', row.estado || 'Pendiente');
   setVal('f-manual-hidden', String(row.manualEstado || false));
-  setVal('f-fecha', row.fecha); calcularSemana();
+  // Proteger contra fecha corrupta (ej. "00:00" que devuelve Sheets por error)
+  const fechaOk = (row.fecha || '').match(/^\d{4}-\d{2}-\d{2}$/);
+  setVal('f-fecha', fechaOk ? row.fecha : ''); calcularSemana();
   setVal('f-cuadrilla', row.cuadrilla); onCuadrillaChange();
   setVal('f-actividad', row.actividad);
   setVal('f-tipo',       row.tipo       || '');
