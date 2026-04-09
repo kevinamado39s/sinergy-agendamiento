@@ -661,37 +661,51 @@ async function _enviarASheets(key, records) {
 }
 
 
+let _cargaInicial = false; // solo corre UNA vez al abrir la app
+
 async function cargarDesdeSheets() {
-  if (!GAS_URL || GAS_URL === 'REEMPLAZAR_CON_TU_URL') return;
+  if (!GAS_URL) return;
+  if (_cargaInicial) return;   // ya se cargó, no volver a pisar datos locales
+  _cargaInicial = true;
   setSyncStatus('syncing');
   try {
     const res  = await fetch(GAS_URL + '?v=' + Date.now());
     const json = await res.json();
     if (json.ok && json.data) {
-      // Si Sheets tiene datos → cargar a local
-      // Si Sheets está vacío pero local tiene datos → subir a Sheets
+      // Si Sheets tiene datos → cargar a local y re-renderizar
+      // Si Sheets está vacío pero local tiene datos → subir a Sheets (primer uso)
+      let huboActualizacion = false;
+
       if (json.data.agenda && json.data.agenda.length) {
         localStorage.setItem(KEY, JSON.stringify(json.data.agenda));
+        huboActualizacion = true;
       } else if (getData().length) {
-        await syncSheet('agenda', getData());
+        syncSheet('agenda', getData());
       }
 
       if (json.data.pendientes && json.data.pendientes.length) {
         localStorage.setItem(KEY_P, JSON.stringify(json.data.pendientes));
+        huboActualizacion = true;
       } else if (getPendientes().length) {
-        await syncSheet('pendientes', getPendientes());
+        syncSheet('pendientes', getPendientes());
       }
 
       if (json.data.gestiones && json.data.gestiones.length) {
         localStorage.setItem(KEY_G, JSON.stringify(json.data.gestiones));
+        huboActualizacion = true;
       } else if (getGestiones().length) {
-        await syncSheet('gestiones', getGestiones());
+        syncSheet('gestiones', getGestiones());
       }
 
-      migrarSemanas();
-      initLists(); resetForm(); resetFormPend(); resetFormGest();
-      renderTabla(); renderResumen(); renderPendientes();
-      actualizarContadorPendientes(); renderGestiones(); actualizarContadorGestiones();
+      // Solo re-renderiza si vino data nueva desde Sheets
+      // NO resetea formularios para no interrumpir al usuario
+      if (huboActualizacion) {
+        migrarSemanas();
+        initLists();
+        renderTabla(); renderResumen(); renderPendientes();
+        actualizarContadorPendientes(); renderGestiones(); actualizarContadorGestiones();
+        fillSemanaSelects();
+      }
     }
     setSyncStatus('ok');
   } catch(e) { setSyncStatus('error'); }
