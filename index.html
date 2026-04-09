@@ -87,6 +87,13 @@
   .pend-card-mini .pend-desc { font-weight: 600; font-size: .88rem; margin-bottom: 4px; }
   .pend-card-mini .pend-meta { font-size: .78rem; color: #666; }
 
+
+  /* === MODAL CONFIRMACIÓN === */
+  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:1000; display:flex; align-items:center; justify-content:center; }
+  .modal-box { background:white; border-radius:10px; padding:24px 28px; max-width:320px; width:90%; box-shadow:0 8px 32px rgba(0,0,0,.2); text-align:center; }
+  .modal-box p { font-size:.95rem; color:#1a1a1a; margin-bottom:20px; line-height:1.5; }
+  .modal-btn-row { display:flex; gap:10px; justify-content:center; }
+
   /* === GESTIONES DEL ÁREA === */
   .gest-badge { background: #7030A0; color: white; border-radius: 10px; padding: 1px 7px; font-size: .72rem; margin-left: 5px; vertical-align: middle; font-weight: 700; }
   .cat-correo       { background: #D9EAF7; color: #1F4E78; }
@@ -131,6 +138,17 @@
   <div class="tab" onclick="showPage('resumen',this)">📊 Resumen</div>
   <div class="tab" onclick="showPage('pendientes',this)">🔔 Pendientes <span id="badge-pend" class="pend-badge hidden">0</span></div>
   <div class="tab" onclick="showPage('gestiones',this)">📝 Gestiones <span id="badge-gest" class="gest-badge hidden">0</span></div>
+</div>
+
+<!-- ==================== MODAL CONFIRMACIÓN ==================== -->
+<div id="modal-confirm" class="modal-overlay hidden">
+  <div class="modal-box">
+    <p id="modal-msg">¿Estás seguro?</p>
+    <div class="modal-btn-row">
+      <button class="btn btn-danger" id="modal-btn-ok">Eliminar</button>
+      <button class="btn btn-secondary" id="modal-btn-cancel">Cancelar</button>
+    </div>
+  </div>
 </div>
 
 <!-- ==================== NUEVO REGISTRO ==================== -->
@@ -542,6 +560,23 @@
 </div>
 
 <script>
+
+/* ========================================================
+   MODAL DE CONFIRMACIÓN (reemplaza confirm() nativo)
+   ======================================================== */
+function confirmarEliminar(mensaje, callback) {
+  const overlay = document.getElementById('modal-confirm');
+  const msg     = document.getElementById('modal-msg');
+  const btnOk   = document.getElementById('modal-btn-ok');
+  const btnCan  = document.getElementById('modal-btn-cancel');
+  msg.textContent = mensaje;
+  overlay.classList.remove('hidden');
+  const cerrar = () => overlay.classList.add('hidden');
+  btnOk.onclick  = () => { cerrar(); callback(); };
+  btnCan.onclick = () => cerrar();
+  overlay.onclick = (e) => { if (e.target === overlay) cerrar(); };
+}
+
 /* ========================================================
    GOOGLE SHEETS SYNC
    ======================================================== */
@@ -1001,9 +1036,10 @@ function editar(id) {
 }
 
 function eliminar(id) {
-  if (!confirm('¿Eliminar esta actividad?')) return;
-  setData(getData().filter(r => r.id !== id));
-  initLists(); renderTabla(); renderPreview(); renderResumen();
+  confirmarEliminar('¿Eliminar esta actividad?', () => {
+    setData(getData().filter(r => r.id !== id));
+    initLists(); renderTabla(); renderPreview(); renderResumen();
+  });
 }
 
 function actualizarEstado(id, nuevoEstado) {
@@ -1104,11 +1140,12 @@ function editarPendiente(id) {
 }
 
 function eliminarPendiente(id) {
-  if (!confirm('¿Eliminar este pendiente?')) return;
-  setPendientes(getPendientes().filter(r => r.id !== id));
-  renderPendientes();
-  actualizarContadorPendientes();
-  renderResumen();
+  confirmarEliminar('¿Eliminar este pendiente?', () => {
+    setPendientes(getPendientes().filter(r => r.id !== id));
+    renderPendientes();
+    actualizarContadorPendientes();
+    renderResumen();
+  });
 }
 
 function cambiarEstadoPendiente(id, estado) {
@@ -1578,9 +1615,10 @@ function editarGestion(id) {
 }
 
 function eliminarGestion(id) {
-  if (!confirm('¿Eliminar esta gestión?')) return;
-  setGestiones(getGestiones().filter(r => r.id !== id));
-  renderGestiones(); actualizarContadorGestiones(); renderResumen();
+  confirmarEliminar('¿Eliminar esta gestión?', () => {
+    setGestiones(getGestiones().filter(r => r.id !== id));
+    renderGestiones(); actualizarContadorGestiones(); renderResumen();
+  });
 }
 
 function cambiarEstadoGestion(id, estado) {
