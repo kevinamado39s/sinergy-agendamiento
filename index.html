@@ -1017,7 +1017,7 @@ function guardar() {
   const data  = getData();
   const isNew = !id;
   const row = {
-    id:           isNew ? Date.now() : Number(id),
+    id:           isNew ? String(Date.now()) : String(id),
     fecha, dia: getDia(fecha), semana, cuadrilla, actividad,
     tipo:         esDesp ? '' : tipo,
     municipio:    esDesp ? '' : municipio,
@@ -1141,7 +1141,7 @@ function guardarPendiente() {
   const isNew = !id;
   const existing = isNew ? null : data.find(r => r.id === Number(id));
   const row = {
-    id:           isNew ? Date.now() : Number(id),
+    id:           isNew ? String(Date.now()) : String(id),
     tipo,
     municipio:    tipo !== 'General' ? val('fp-municipio')  : '',
     municipio2:   tipo === 'Tramo'   ? val('fp-municipio2') : '',
@@ -1621,7 +1621,7 @@ function guardarGestion() {
   const data  = getGestiones();
   const isNew = !id;
   const row = {
-    id:          isNew ? Date.now() : Number(id),
+    id:          isNew ? String(Date.now()) : String(id),
     categoria:   cat,
     asunto,
     dirigido:    val('fg-dirigido'),
