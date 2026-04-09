@@ -545,7 +545,7 @@
 /* ========================================================
    GOOGLE SHEETS SYNC
    ======================================================== */
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbwCEHeVFiebmHUrZMx115fVaBiKDC3MhJ3nRjOXyF_Jo3wrtvT1BF8-Kx0hGsj0oWM4/exec'; // 👈 Pega aquí la URL de tu Apps Script
+const GAS_URL = 'REEMPLAZAR_CON_TU_URL'; // 👈 Pega aquí la URL de tu Apps Script
 
 function setSyncStatus(s) {
   const el = document.getElementById('sync-status');
@@ -556,18 +556,27 @@ function setSyncStatus(s) {
   else { el.textContent = '⚠️ Sin conexión (datos locales)'; el.style.color='#f9e79f'; }
 }
 
-async function syncSheet(key, records) {
+// Timers de debounce por hoja — evita sincronizar en cada pulsación
+const _syncTimers = {};
+
+function syncSheet(key, records) {
   if (!GAS_URL || GAS_URL === 'REEMPLAZAR_CON_TU_URL') return;
+  // Cancela el timer anterior para esta hoja si aún no disparó
+  if (_syncTimers[key]) clearTimeout(_syncTimers[key]);
   setSyncStatus('syncing');
-  try {
-    const res = await fetch(GAS_URL, {
-      method: 'POST',
-      body: JSON.stringify({ sheet: key, action: 'sync', records }),
-      headers: { 'Content-Type': 'text/plain' }
-    });
-    const json = await res.json();
-    setSyncStatus(json.ok ? 'ok' : 'error');
-  } catch(e) { setSyncStatus('error'); }
+  // Espera 2.5s de inactividad antes de enviar — operaciones locales son instantáneas
+  _syncTimers[key] = setTimeout(async () => {
+    try {
+      const res = await fetch(GAS_URL, {
+        method: 'POST',
+        body: JSON.stringify({ sheet: key, action: 'sync', records }),
+        headers: { 'Content-Type': 'text/plain' }
+      });
+      const json = await res.json();
+      setSyncStatus(json.ok ? 'ok' : 'error');
+    } catch(e) { setSyncStatus('error'); }
+    delete _syncTimers[key];
+  }, 2500);
 }
 
 async function cargarDesdeSheets() {
@@ -577,9 +586,26 @@ async function cargarDesdeSheets() {
     const res  = await fetch(GAS_URL + '?v=' + Date.now());
     const json = await res.json();
     if (json.ok && json.data) {
-      if (json.data.agenda     && json.data.agenda.length)     localStorage.setItem(KEY,   JSON.stringify(json.data.agenda));
-      if (json.data.pendientes && json.data.pendientes.length) localStorage.setItem(KEY_P, JSON.stringify(json.data.pendientes));
-      if (json.data.gestiones  && json.data.gestiones.length)  localStorage.setItem(KEY_G, JSON.stringify(json.data.gestiones));
+      // Si Sheets tiene datos → cargar a local
+      // Si Sheets está vacío pero local tiene datos → subir a Sheets
+      if (json.data.agenda && json.data.agenda.length) {
+        localStorage.setItem(KEY, JSON.stringify(json.data.agenda));
+      } else if (getData().length) {
+        await syncSheet('agenda', getData());
+      }
+
+      if (json.data.pendientes && json.data.pendientes.length) {
+        localStorage.setItem(KEY_P, JSON.stringify(json.data.pendientes));
+      } else if (getPendientes().length) {
+        await syncSheet('pendientes', getPendientes());
+      }
+
+      if (json.data.gestiones && json.data.gestiones.length) {
+        localStorage.setItem(KEY_G, JSON.stringify(json.data.gestiones));
+      } else if (getGestiones().length) {
+        await syncSheet('gestiones', getGestiones());
+      }
+
       migrarSemanas();
       initLists(); resetForm(); resetFormPend(); resetFormGest();
       renderTabla(); renderResumen(); renderPendientes();
