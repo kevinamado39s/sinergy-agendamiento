@@ -616,7 +616,7 @@ function confirmarEliminar(mensaje, callback) {
 // GAS_URL: primero busca en localStorage (persiste entre actualizaciones),
 // luego usa la URL fija si está definida, sino pide al usuario
 const _GAS_STORED = localStorage.getItem('sinergy_gas_url') || '';
-const _GAS_HARDCODED = 'REEMPLAZAR_CON_TU_URL';
+const _GAS_HARDCODED = 'https://script.google.com/macros/s/AKfycby2-u37WdKY8kX7QFdGWS1BeCmhKR3DzdLDpQC4Ofm7SjDTSf_B3ZG2e1k-0SA0Gg-2/exec';
 let GAS_URL = _GAS_STORED || (_GAS_HARDCODED !== 'REEMPLAZAR_CON_TU_URL' ? _GAS_HARDCODED : '');
 
 function setSyncStatus(s) {
